@@ -1,0 +1,78 @@
+---
+title: "Machine Learning Project"
+output: html_document
+---
+
+## Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+In this project, we will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participant They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. The five ways are exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Only Class A corresponds to correct performance. The goal of this project is to predict the manner in which they did the exercise, i.e., Class A to E. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret); library(rpart); library(rpart.plot)
+library(randomForest);
+```
+
+## Import data
+
+```{r}
+training <- read.csv("pml-training.csv", na.strings = c("NA", ""))
+testing <- read.csv("pml-testing.csv", na.strings = c("NA", ""))
+dim(training)
+```
+
+## Clean data
+
+Remove fields with near zero variance:
+
+```{r}
+novar <- nearZeroVar(training, saveMetrics = T)
+training <- training[, !novar$nzv]
+dim(training)
+```
+
+Remove timestamps and patient id's:
+
+```{r}
+
+training<-training[,-(1:6)]
+training <- training[, colSums(is.na(training)) == 0]
+dim(training)
+```
+
+## Model Specification
+
+
+To avoid overfitting and to reduce out of sample errors, 5-fold cross validation is specified (5 because my computer is very slow!).
+```{r}
+tc <- trainControl(method = "cv", number = 3, verboseIter=FALSE)
+```
+
+Try fitting a classification tree:
+```{r}
+
+fit_rpart <- train(classe ~ ., data = training, method = "rpart", trControl = tc, na.action=na.omit)
+print(fit_rpart, digits = 4)
+```
+
+Accuracy is poor - around 50%.
+
+Try a random forest model:
+
+```{r}
+fit_rf <- train(classe ~ ., data = training, method = "rf", trControl = tc, na.action=na.omit)
+print(fit_rf, digits = 4)
+```
+Accuracy is 99.2% - very high.  Out of sample error would be estimated at 0.8%.
+
+## Test Set prediction
+
+We should predict outcome from the test set based on this model:
+
+```{r}
+predict(fit_rf, testing)
+```
+
+
